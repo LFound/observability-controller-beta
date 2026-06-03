@@ -20,7 +20,10 @@ def observe(message: str) -> dict:
             "Content-Type": "application/json",
             "x-api-key": OBSERVE_KEY,
         },
-        json={"message": message},
+        json={
+            "message": message,
+            "return_prompt": True,
+        },
         timeout=20,
     )
 
@@ -61,7 +64,7 @@ print(decision)
 
 if decision["decision"] == "clarify":
     print("\nClarification required:")
-    print(decision["clarification_question"])
+    print(decision["clarification_prompt"])
 else:
     print("\nProceeding to model...")
     result = call_your_model(message)

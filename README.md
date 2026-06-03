@@ -31,8 +31,7 @@ If context is missing:
 ```json
 {
   "decision": "clarify",
-  "state": "underspecified",
-  "clarification_question": "What specific system is affected, and what error messages, logs, recent changes, environment, metrics, example input/output, or reproduction steps are available?"
+  "state": "underspecified"
 }
 ```
 
@@ -57,7 +56,7 @@ LLM
 Generic troubleshooting response
 ```
 
-With controller:
+With controller (static clarification):
 
 ```text
 User
@@ -66,21 +65,21 @@ Observability Controller
  ↓
 Clarify
  ↓
-0 model tokens consumed
+0 additional model tokens
 ```
 
-or
+With controller (adaptive clarification):
 
 ```text
 User
  ↓
 Observability Controller
  ↓
-Proceed
+Clarify
  ↓
-LLM
+Small clarification model call (~40-60 tokens)
  ↓
-Targeted diagnosis
+Generated clarification question
 ```
 
 ## API
@@ -141,6 +140,39 @@ Use before:
 - AutoGen agents
 - Internal support assistants
 - Custom RAG systems
+
+## Clarification modes
+
+The controller supports two clarification workflows.
+
+### Static clarification
+
+The controller returns a fallback clarification question directly.
+
+```text
+Additional model tokens: 0
+```
+
+### Adaptive clarification
+
+The controller can return a model agnostic clarification prompt that may be sent to OpenAI, Claude, Gemini, Ollama, Mistral, or internal models to generate a domain-specific clarification question.
+
+Example:
+```text
+Input:
+"The patient became unwell."
+
+Generated clarification:
+"What symptoms is the patient experiencing?"
+```
+
+Typical clarification generation cost:
+
+```text
+~40-60 tokens
+```
+
+This cost is typically much smaller than invoking a full diagnostic reasoning workflow.
 
 ## Beta access
 

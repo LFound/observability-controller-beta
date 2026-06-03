@@ -22,11 +22,23 @@ def observe(message: str) -> dict:
             "Content-Type": "application/json",
             "x-api-key": OBSERVE_KEY,
         },
-        json={"message": message},
+        json={
+            "message": message,
+            "return_prompt": True,
+        },
         timeout=20,
     )
+
     response.raise_for_status()
     return response.json()
+
+
+def generate_clarification(prompt: str):
+    response = client.responses.create(
+        model="gpt-4.1-mini",
+        input=prompt,
+    )
+    return response
 
 
 def call_model(message: str):
@@ -44,25 +56,39 @@ def run(message: str):
     print(decision)
 
     if decision["decision"] == "clarify":
-        print("\nClarification required before model call:")
-        print(decision["clarification_question"])
+        print("\nGenerating clarification question...")
 
-        print("\nModel call: skipped")
-        print("OpenAI tokens used: 0")
+        clarification = generate_clarification(
+            decision["clarification_prompt"]
+        )
+
+        print("\nGenerated clarification:")
+        print(clarification.output_text)
+
+        if hasattr(clarification, "usage"):
+            print(
+                f"\nClarification tokens used: "
+                f"{clarification.usage.total_tokens}"
+            )
+
+        print("\nMain model call: skipped")
+        print("Main model tokens used: 0")
 
         return
 
     print("\nProceeding to model call...")
+
     model_response = call_model(message)
 
     print("\nModel answer:")
     print(model_response.output_text)
 
     if hasattr(model_response, "usage"):
-        print("\nModel call: executed")
-
-        if hasattr(model_response, "usage"):
-            print(f"OpenAI tokens used: {model_response.usage.total_tokens}")
+        print("\nMain model call: executed")
+        print(
+            f"Main model tokens used: "
+            f"{model_response.usage.total_tokens}"
+        )
 
 
 if __name__ == "__main__":
