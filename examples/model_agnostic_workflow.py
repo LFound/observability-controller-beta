@@ -1,15 +1,24 @@
+import os
 import requests
 
-OBSERVE_URL = "YOUR_CONTROLLER_URL"
-API_KEY = "YOUR_API_KEY"
+
+OBSERVE_URL = os.getenv("OBSERVABILITY_API_URL")
+OBSERVE_KEY = os.getenv("OBSERVABILITY_API_KEY")
 
 
-def observe(message: str):
+if not OBSERVE_URL:
+    raise RuntimeError("Set OBSERVABILITY_API_URL before running this example.")
+
+if not OBSERVE_KEY:
+    raise RuntimeError("Set OBSERVABILITY_API_KEY before running this example.")
+
+
+def observe(message: str) -> dict:
     response = requests.post(
         OBSERVE_URL,
         headers={
             "Content-Type": "application/json",
-            "x-api-key": API_KEY,
+            "x-api-key": OBSERVE_KEY,
         },
         json={"message": message},
         timeout=20,
@@ -39,11 +48,8 @@ def call_your_model(message: str):
 
 # ---------------------------------------------------
 # Integration point:
-# If decision == "proceed",
-# send the message to your model.
-#
-# If decision == "clarify",
-# return the clarification question to the user.
+# If decision == "proceed", send the message to your model.
+# If decision == "clarify", return the clarification question to the user.
 # ---------------------------------------------------
 
 message = "My deployment failed."
