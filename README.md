@@ -1,12 +1,12 @@
 # Observability Controller Beta
 
-A lightweight pre-reasoning observability controller for LLM, RAG and agent workflows.
+A lightweight observability controller that determines whether sufficient diagnostic context exists before invoking LLM, RAG, and agent workflows.
 
 The Observability Controller evaluates whether a problem contains sufficient diagnostic context to proceed with reasoning, or whether clarification should be requested before invoking expensive downstream model calls.
 
 ## The problem
 
-Most AI systems begin reasoning immediately.
+Many AI systems begin reasoning before enough diagnostic context is available.
 
 ```text
 My deployment failed.
@@ -45,6 +45,44 @@ If enough context exists:
 }
 ```
 
+## Example workflow
+
+Without controller:
+
+```text
+User
+ ↓
+LLM
+ ↓
+Generic troubleshooting response
+```
+
+With controller:
+
+```text
+User
+ ↓
+Observability Controller
+ ↓
+Clarify
+ ↓
+0 model tokens consumed
+```
+
+or
+
+```text
+User
+ ↓
+Observability Controller
+ ↓
+Proceed
+ ↓
+LLM
+ ↓
+Targeted diagnosis
+```
+
 ## API
 
 ### Endpoint
@@ -76,7 +114,7 @@ Initial testing on ten real-world operational issues showed:
 Baseline workflow tokens:      14,869
 Controller workflow tokens:     6,071
 
-Observed reduction in benchmark: ~59%
+Observed token reduction in benchmark: ~59%
 ```
 
 | Issue | Baseline Tokens | Controller Tokens |
@@ -92,6 +130,8 @@ These results are early beta findings, not final performance claims.
 
 ## Intended use
 
+The controller is model agnostic and can be integrated ahead of any LLM, agent, or retrieval workflow.
+
 Use before:
 
 - OpenAI workflows
@@ -106,7 +146,11 @@ Use before:
 
 This is currently a private beta API.
 
-To request access, contact Luke Found / FoundScript.
+To request access or provide feedback:
+
+info@foundscript.com
+
+Please include a brief description of your use case when requesting access.
 
 You will receive:
 
@@ -119,15 +163,32 @@ Never commit API keys into public repositories.
 
 ## Examples
 
-See:
+```text
+examples/curl_example.sh
+```
+
+Basic API call example.
 
 ```text
 examples/python_example.py
-examples/curl_example.sh
 ```
+
+Simple Python integration.
+
+```text
+examples/openai_gated_example.py
+```
+
+Complete OpenAI workflow example showing controller-based model gating.
+
+```text
+examples/model_agnostic_workflow.py
+```
+
+Template for Claude, Gemini, Ollama, Mistral, internal models, and other providers.
 
 ## Current status
 
 Private beta.
 
-The current focus is evaluating whether clarification-first workflows can improve operational diagnostics, reduce token consumption and improve reasoning efficiency across LLM and agent systems.
+The current focus is evaluating clarification-first workflows across operational diagnostics, support triage, RAG systems, and AI agents to determine their impact on token consumption, observability, and diagnostic quality.
