@@ -1,20 +1,36 @@
 # Observability Controller Beta
 
-A lightweight observability controller that determines whether sufficient diagnostic context exists before invoking LLM, RAG, and agent workflows.
+A lightweight control layer that detects ambiguous or underspecified requests before invoking LLM, RAG, and agent workflows.
 
-The Observability Controller evaluates whether a problem contains sufficient diagnostic context to proceed with reasoning, or whether clarification should be requested before invoking expensive downstream model calls.
+The Observability Controller evaluates whether a request contains sufficient information to proceed with reasoning, retrieval, planning, or execution. When critical information is missing, the controller can request clarification before downstream systems consume compute, retrieve documents, call tools, or generate responses.
 
-## The problem
+---
 
-Many AI systems begin reasoning before enough diagnostic context is available.
+## Why this matters
+
+Many AI systems begin reasoning before they have enough information.
+
+Example:
 
 ```text
 My deployment failed.
 ```
 
-A model may produce a long troubleshooting response despite having almost no useful diagnostic context.
+Despite having almost no useful context, a model may immediately begin troubleshooting, retrieving documents, generating plans, or calling tools.
 
-## The approach
+This can lead to:
+
+- Generic or inaccurate responses
+- Incorrect task decomposition
+- Unnecessary retrieval operations
+- Wasted agent execution
+- Increased model consumption
+
+The Observability Controller attempts to identify missing information before reasoning begins.
+
+---
+
+## How it works
 
 ```text
 User Query
@@ -26,7 +42,7 @@ Clarify or Proceed
 LLM / Agent / RAG System
 ```
 
-If context is missing:
+If information is missing:
 
 ```json
 {
@@ -35,7 +51,7 @@ If context is missing:
 }
 ```
 
-If enough context exists:
+If sufficient information exists:
 
 ```json
 {
@@ -44,43 +60,109 @@ If enough context exists:
 }
 ```
 
-## Example workflow
+---
 
-Without controller:
+## Example ambiguity detection
+
+### Ambiguous request
+
+Input:
+
+```text
+The system is broken.
+```
+
+Output:
+
+```json
+{
+  "decision": "clarify",
+  "state": "underspecified"
+}
+```
+
+Example clarification:
+
+```text
+Which system is affected and what behaviour are you observing?
+```
+
+### Sufficiently specified request
+
+Input:
+
+```text
+The Kubernetes deployment entered CrashLoopBackOff after upgrading from v1.31 to v1.32.
+```
+
+Output:
+
+```json
+{
+  "decision": "proceed",
+  "state": "ready"
+}
+```
+
+---
+
+## Example workflows
+
+### Standard workflow
 
 ```text
 User
  ↓
-LLM
+LLM / Agent
  ↓
-Generic troubleshooting response
+Reasoning begins immediately
 ```
 
-With controller (static clarification):
+### Clarification-first workflow
 
 ```text
 User
  ↓
 Observability Controller
  ↓
-Clarify
+Clarify or Proceed
  ↓
-0 additional model tokens
+LLM / Agent
 ```
 
-With controller (adaptive clarification):
+### Agent workflow example
+
+Without clarification:
+
+```text
+User
+ ↓
+Planner Agent
+ ↓
+Research Agent
+ ↓
+Execution Agent
+```
+
+With clarification:
 
 ```text
 User
  ↓
 Observability Controller
  ↓
-Clarify
+Clarification
  ↓
-Small clarification model call (~40-60 tokens)
+Planner Agent
  ↓
-Generated clarification question
+Research Agent
+ ↓
+Execution Agent
 ```
+
+The controller is designed to reduce ambiguity before downstream workflows begin planning, retrieval, execution, or reasoning.
+
+---
 
 ## API
 
@@ -105,6 +187,8 @@ Content-Type: application/json
 x-api-key: YOUR_API_KEY
 ```
 
+---
+
 ## Early benchmark results
 
 Initial testing on ten real-world operational issues showed:
@@ -113,11 +197,11 @@ Initial testing on ten real-world operational issues showed:
 Baseline workflow tokens:      14,869
 Controller workflow tokens:     6,071
 
-Observed token reduction in benchmark: ~59%
+Observed token reduction: ~59%
 ```
 
 | Issue | Baseline Tokens | Controller Tokens |
-|---|---:|---:|
+|---------|---------:|---------:|
 | Kubernetes CrashLoopBackOff | 1,832 | 715 |
 | Postgres Join Timeout | 1,703 | 688 |
 | Vector Retrieval Quality | 1,611 | 595 |
@@ -125,13 +209,33 @@ Observed token reduction in benchmark: ~59%
 
 Judged evaluations showed broadly comparable diagnostic quality while significantly reducing downstream token consumption.
 
-These results are early beta findings, not final performance claims.
+These results are early beta findings and should not be considered final performance claims.
+
+---
+
+## Workflow evaluation
+
+The controller was evaluated across 24 multi-step workflow executions involving planner, researcher, analyst and writer stages.
+
+Results:
+
+```text
+Workflow executions:        24
+Completed successfully:     22
+Stopped as underspecified:   2
+```
+
+In 7 cases, ambiguity or degraded intermediate outputs were identified and corrected during evaluation.
+
+The controller prevented execution of workflows that remained underspecified and allowed sufficiently specified workflows to proceed through the execution chain.
+
+These results are exploratory beta findings intended to evaluate clarification-first workflow control rather than establish final performance claims.
+
+---
 
 ## Intended use
 
-The controller is model agnostic and can be integrated ahead of any LLM, agent, or retrieval workflow.
-
-Use before:
+The controller is model agnostic and can be integrated ahead of:
 
 - OpenAI workflows
 - Claude workflows
@@ -139,15 +243,29 @@ Use before:
 - CrewAI systems
 - AutoGen agents
 - Internal support assistants
+- Operational triage systems
+- Customer support workflows
 - Custom RAG systems
+- Internal AI copilots
+
+Typical use cases include:
+
+- Incident triage
+- Support ticket routing
+- AI agent workflows
+- Retrieval-augmented generation (RAG)
+- Internal engineering assistants
+- Operational diagnostics
+
+---
 
 ## Clarification modes
 
-The controller supports two clarification workflows.
+The controller currently supports two clarification workflows.
 
 ### Static clarification
 
-The controller returns a fallback clarification question directly.
+Returns a predefined clarification question directly.
 
 ```text
 Additional model tokens: 0
@@ -155,9 +273,10 @@ Additional model tokens: 0
 
 ### Adaptive clarification
 
-The controller can return a model agnostic clarification prompt that may be sent to OpenAI, Claude, Gemini, Ollama, Mistral, or internal models to generate a domain-specific clarification question.
+Returns a model agnostic clarification prompt that may be sent to OpenAI, Claude, Gemini, Ollama, Mistral, or internal models to generate a context-specific clarification question.
 
 Example:
+
 ```text
 Input:
 "The patient became unwell."
@@ -169,10 +288,12 @@ Generated clarification:
 Typical clarification generation cost:
 
 ```text
-~40-60 tokens
+~40–60 tokens
 ```
 
-This cost is typically much smaller than invoking a full diagnostic reasoning workflow.
+This is typically much smaller than invoking a full reasoning, retrieval, or diagnostic workflow.
+
+---
 
 ## Beta access
 
@@ -180,9 +301,9 @@ This is currently a private beta API.
 
 To request access or provide feedback:
 
-info@foundscript.com
+**info@foundscript.com**
 
-Please include a brief description of your use case when requesting access.
+Please include a short description of your use case.
 
 You will receive:
 
@@ -193,34 +314,56 @@ API key
 
 Never commit API keys into public repositories.
 
+---
+
 ## Examples
+
+### Basic API call
 
 ```text
 examples/curl_example.sh
 ```
 
-Basic API call example.
+### Python integration
 
 ```text
 examples/python_example.py
 ```
 
-Simple Python integration.
+### OpenAI workflow example
 
 ```text
 examples/openai_gated_example.py
 ```
 
-Complete OpenAI workflow example showing controller-based model gating.
+### Model agnostic workflow example
 
 ```text
 examples/model_agnostic_workflow.py
 ```
 
-Template for Claude, Gemini, Ollama, Mistral, internal models, and other providers.
+Supports Claude, Gemini, Ollama, Mistral, internal models and other providers.
+
+---
 
 ## Current status
 
 Private beta.
 
-The current focus is evaluating clarification-first workflows across operational diagnostics, support triage, RAG systems, and AI agents to determine their impact on token consumption, observability, and diagnostic quality.
+Current evaluation focuses on:
+
+- Operational diagnostics
+- Support triage
+- RAG systems
+- Agent workflows
+- Internal AI assistants
+
+The objective is to determine whether clarification-first reasoning improves downstream workflow quality, execution efficiency and resource utilisation before reasoning begins.
+
+Future evaluation areas include:
+
+- Clarification accuracy
+- Agent workflow impact
+- Retrieval quality improvements
+- Tool call reduction
+- Human preference testing
