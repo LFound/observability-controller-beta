@@ -24,6 +24,7 @@ def observe(message: str) -> dict:
         },
         json={
             "message": message,
+            "mode": "sufficiency_v2",
             "return_prompt": True,
         },
         timeout=20,
@@ -38,7 +39,8 @@ def generate_clarification(prompt: str):
         model="gpt-4.1-mini",
         input=prompt,
     )
-    return response
+
+    return response.output_text, response
 
 
 def call_model(message: str):
@@ -58,17 +60,19 @@ def run(message: str):
     if decision["decision"] == "clarify":
         print("\nGenerating clarification question...")
 
-        clarification = generate_clarification(
-            decision["clarification_prompt"]
+        clarification_text, clarification_response = (
+            generate_clarification(
+                decision["clarification_prompt"]
+            )
         )
 
         print("\nGenerated clarification:")
-        print(clarification.output_text)
+        print(clarification_text)
 
-        if hasattr(clarification, "usage"):
+        if hasattr(clarification_response, "usage"):
             print(
                 f"\nClarification tokens used: "
-                f"{clarification.usage.total_tokens}"
+                f"{clarification_response.usage.total_tokens}"
             )
 
         print("\nMain model call: skipped")

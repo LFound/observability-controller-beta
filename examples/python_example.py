@@ -11,7 +11,8 @@ response = requests.post(
         "Content-Type": "application/json",
     },
     json={
-        "message": "My deployment failed."
+        "message": "My deployment failed.",
+        "mode": "sufficiency_v2"
     },
 )
 

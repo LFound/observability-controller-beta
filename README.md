@@ -1,8 +1,8 @@
 # Observability Controller Beta
 
-A lightweight control layer that detects ambiguous or underspecified requests before invoking LLM, RAG, and agent workflows.
+A lightweight control layer that detects ambiguous or underspecified requests before invoking LLM, RAG and agent workflows.
 
-The Observability Controller evaluates whether a request contains sufficient information to proceed with reasoning, retrieval, planning, or execution. When critical information is missing, the controller can request clarification before downstream systems consume compute, retrieve documents, call tools, or generate responses.
+The Observability Controller evaluates whether a request contains sufficient information to proceed with reasoning, retrieval, planning or execution. When critical information is missing, the controller can request clarification before downstream systems consume compute, retrieve documents, call tools or generate responses.
 
 ---
 
@@ -16,7 +16,7 @@ Example:
 My deployment failed.
 ```
 
-Despite having almost no useful context, a model may immediately begin troubleshooting, retrieving documents, generating plans, or calling tools.
+Despite having almost no useful context, a model may immediately begin troubleshooting, retrieving documents, generating plans or calling tools.
 
 This can lead to:
 
@@ -24,6 +24,8 @@ This can lead to:
 - Incorrect task decomposition
 - Unnecessary retrieval operations
 - Wasted agent execution
+- Agent drift
+- Repeated reasoning cycles
 - Increased model consumption
 
 The Observability Controller attempts to identify missing information before reasoning begins.
@@ -160,7 +162,7 @@ Research Agent
 Execution Agent
 ```
 
-The controller is designed to reduce ambiguity before downstream workflows begin planning, retrieval, execution, or reasoning.
+The controller is designed to reduce ambiguity before downstream workflows begin planning, retrieval, execution or reasoning.
 
 ---
 
@@ -176,7 +178,8 @@ POST /observe
 
 ```json
 {
-  "message": "My deployment failed."
+  "message": "My deployment failed.",
+  "mode": "sufficiency_v2"
 }
 ```
 
@@ -189,47 +192,64 @@ x-api-key: YOUR_API_KEY
 
 ---
 
-## Early benchmark results
+## Evaluation
 
-Initial testing on ten real-world operational issues showed:
+Current evaluation includes:
 
-```text
-Baseline workflow tokens:      14,869
-Controller workflow tokens:     6,071
+- 24 multi-step workflow executions
+- 45 held-out sufficiency classification tests
+- 16 adversarial boundary cases
 
-Observed token reduction: ~59%
-```
-
-| Issue | Baseline Tokens | Controller Tokens |
-|---------|---------:|---------:|
-| Kubernetes CrashLoopBackOff | 1,832 | 715 |
-| Postgres Join Timeout | 1,703 | 688 |
-| Vector Retrieval Quality | 1,611 | 595 |
-| API Cache Regression | 1,648 | 645 |
-
-Judged evaluations showed broadly comparable diagnostic quality while significantly reducing downstream token consumption.
-
-These results are early beta findings and should not be considered final performance claims.
-
----
-
-## Workflow evaluation
+### Workflow evaluation
 
 The controller was evaluated across 24 multi-step workflow executions involving planner, researcher, analyst and writer stages.
 
 Results:
 
 ```text
-Workflow executions:        24
-Completed successfully:     22
-Stopped as underspecified:   2
+Workflow executions:         24
+Completed successfully:      22
+Stopped as underspecified:    2
+Repairs triggered:            7
 ```
 
 In 7 cases, ambiguity or degraded intermediate outputs were identified and corrected during evaluation.
 
 The controller prevented execution of workflows that remained underspecified and allowed sufficiently specified workflows to proceed through the execution chain.
 
+### Classification evaluation
+
+Held-out benchmark:
+
+```text
+45 / 45 classifications correct
+```
+
+Adversarial boundary benchmark:
+
+```text
+12 / 16 classifications correct
+75% agreement
+```
+
+The adversarial benchmark contains intentionally ambiguous requests designed to test the controller near decision boundaries.
+
 These results are exploratory beta findings intended to evaluate clarification-first workflow control rather than establish final performance claims.
+
+---
+
+## Experimental workflow control
+
+In addition to request-level clarification, the controller has been evaluated experimentally within multi-stage workflows involving planner, researcher, analyst and writer stages.
+
+Early evaluation explored:
+
+- Intermediate handoff validation
+- Ambiguity detection between workflow stages
+- Repair and revalidation of degraded intermediate outputs
+- Workflow stopping when sufficient context could not be recovered
+
+These capabilities remain experimental and are not currently exposed through the public API.
 
 ---
 
@@ -253,7 +273,7 @@ Typical use cases include:
 - Incident triage
 - Support ticket routing
 - AI agent workflows
-- Retrieval-augmented generation (RAG)
+- Retrieval augmented generation (RAG)
 - Internal engineering assistants
 - Operational diagnostics
 
@@ -263,7 +283,7 @@ Typical use cases include:
 
 The controller currently supports two clarification workflows.
 
-### Static clarification
+### Direct clarification
 
 Returns a predefined clarification question directly.
 
@@ -271,9 +291,9 @@ Returns a predefined clarification question directly.
 Additional model tokens: 0
 ```
 
-### Adaptive clarification
+### Model-generated clarification
 
-Returns a model agnostic clarification prompt that may be sent to OpenAI, Claude, Gemini, Ollama, Mistral, or internal models to generate a context-specific clarification question.
+Returns a model agnostic clarification prompt that may be sent to OpenAI, Claude, Gemini, Ollama, Mistral or internal models to generate a context-specific clarification question.
 
 Example:
 
@@ -291,7 +311,7 @@ Typical clarification generation cost:
 ~40–60 tokens
 ```
 
-This is typically much smaller than invoking a full reasoning, retrieval, or diagnostic workflow.
+This is typically much smaller than invoking a full reasoning, retrieval or diagnostic workflow.
 
 ---
 
@@ -360,10 +380,11 @@ Current evaluation focuses on:
 
 The objective is to determine whether clarification-first reasoning improves downstream workflow quality, execution efficiency and resource utilisation before reasoning begins.
 
-Future evaluation areas include:
+Areas currently under evaluation include:
 
 - Clarification accuracy
 - Agent workflow impact
 - Retrieval quality improvements
 - Tool call reduction
 - Human preference testing
+- Workflow repair and revalidation

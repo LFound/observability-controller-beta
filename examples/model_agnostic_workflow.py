@@ -22,6 +22,7 @@ def observe(message: str) -> dict:
         },
         json={
             "message": message,
+            "mode": "sufficiency_v2",
             "return_prompt": True,
         },
         timeout=20,
@@ -49,12 +50,6 @@ def call_your_model(message: str):
     )
 
 
-# ---------------------------------------------------
-# Integration point:
-# If decision == "proceed", send the message to your model.
-# If decision == "clarify", return the clarification question to the user.
-# ---------------------------------------------------
-
 message = "My deployment failed."
 
 decision = observe(message)
@@ -63,8 +58,13 @@ print("Controller decision:")
 print(decision)
 
 if decision["decision"] == "clarify":
+    clarification_question = call_your_model(
+        decision["clarification_prompt"]
+    )
+
     print("\nClarification required:")
-    print(decision["clarification_prompt"])
+    print(clarification_question)
+
 else:
     print("\nProceeding to model...")
     result = call_your_model(message)
