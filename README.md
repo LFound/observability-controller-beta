@@ -1,9 +1,31 @@
 # Observability Controller Beta
 
-A lightweight control layer that detects ambiguous or underspecified requests before invoking LLM, RAG and agent workflows.
+> Detect underspecified support, operational and workflow requests before invoking LLM, RAG and agent systems.
 
-The Observability Controller evaluates whether a request contains sufficient information to proceed with reasoning, retrieval, planning or execution. When critical information is missing, the controller can request clarification before downstream systems consume compute, retrieve documents, call tools or generate responses.
+![Status](https://img.shields.io/badge/status-private_beta-blue)
+![Evaluations](https://img.shields.io/badge/evaluations-107-success)
+![Real%20World](https://img.shields.io/badge/real_world-97%25-success)
+![Workflow](https://img.shields.io/badge/token_reduction-43%25-brightgreen)
 
+A lightweight control layer that evaluates whether a request contains sufficient information to proceed with reasoning, retrieval, planning or execution.
+
+When critical information is missing, the controller can request clarification before downstream systems consume compute, retrieve documents, call tools or generate responses.
+
+The controller operates before the model or workflow and does not depend on a specific LLM provider, framework or agent architecture.
+
+Current beta evaluation:
+
+```text
+107 labelled evaluations
+4 benchmark families
+
+Conversation benchmark:      100.0%
+Support benchmark:           100.0%
+Cross-domain benchmark:      100.0%
+Real-world benchmark:         97.3%
+
+Workflow token reduction:     43.0%
+```
 ---
 
 ## Why this matters
@@ -194,47 +216,119 @@ x-api-key: YOUR_API_KEY
 
 ## Evaluation
 
-Current evaluation includes:
+The controller has been evaluated across multiple benchmark families designed to assess context sufficiency detection, clarification behaviour and workflow efficiency.
 
-- 24 multi-step workflow executions
-- 45 held-out sufficiency classification tests
-- 16 adversarial boundary cases
-
-### Workflow evaluation
-
-The controller was evaluated across 24 multi-step workflow executions involving planner, researcher, analyst and writer stages.
-
-Results:
+Current evaluation covers:
 
 ```text
-Workflow executions:         24
-Completed successfully:      22
-Stopped as underspecified:    2
-Repairs triggered:            7
+107 labelled evaluations
+4 benchmark families
 ```
 
-In 7 cases, ambiguity or degraded intermediate outputs were identified and corrected during evaluation.
+### Benchmark summary
 
-The controller prevented execution of workflows that remained underspecified and allowed sufficiently specified workflows to proceed through the execution chain.
+| Benchmark                      |     Cases | Result |
+| ------------------------------ | --------: | -----: |
+| Conversation evaluation        |        30 | 100.0% |
+| Support benchmark              |        20 | 100.0% |
+| Cross-domain support benchmark |        20 | 100.0% |
+| Real-world prompt benchmark    | 37 scored |  97.3% |
 
-### Classification evaluation
+### Conversation evaluation
 
-Held-out benchmark:
+Multi-turn clarification benchmark:
 
 ```text
-45 / 45 classifications correct
+Threads:                 10
+Total turns:             30
+
+Correct:                 30 / 30
+Accuracy:                100.0%
+
+False positives:         0
+False negatives:         0
 ```
 
-Adversarial boundary benchmark:
+### Support benchmark
+
+Generic support and troubleshooting requests:
 
 ```text
-12 / 16 classifications correct
-75% agreement
+Scored cases:            20
+Correct:                 20
+
+Accuracy:                100.0%
+
+Clarify precision:       100.0%
+Clarify recall:          100.0%
 ```
 
-The adversarial benchmark contains intentionally ambiguous requests designed to test the controller near decision boundaries.
+### Cross-domain benchmark
 
-These results are exploratory beta findings intended to evaluate clarification-first workflow control rather than establish final performance claims.
+Domains included:
+
+* Telecommunications
+* Ecommerce
+* Banking
+* Healthcare administration
+* General customer support
+
+```text
+Scored cases:            20
+Correct:                 20
+
+Accuracy:                100.0%
+
+Clarify precision:       100.0%
+Clarify recall:          100.0%
+```
+
+### Real-world prompt benchmark
+
+Prompts adapted from real-world issue reporting styles, support requests, operational incidents and technical troubleshooting scenarios.
+
+```text
+Scored cases:            37
+Correct:                 36
+
+Accuracy:                97.3%
+
+Clarify precision:       100.0%
+Clarify recall:           94.4%
+
+False positives:         0
+False negatives:         1
+```
+
+### Workflow token benchmark
+
+Evaluation of clarification-first workflows versus a naive baseline workflow.
+
+```text
+Cases:                       10
+
+Baseline workflow tokens:    5,498
+Controller workflow tokens:  3,136
+
+Tokens saved:                2,362
+Reduction:                   43.0%
+```
+
+These results suggest that identifying insufficient context before reasoning begins can reduce unnecessary model activity in workflows where clarification would otherwise occur after an incomplete response.
+
+### Limitations
+
+Current evaluation should be considered engineering validation rather than a formal academic benchmark.
+
+Limitations include:
+
+* Relatively small sample sizes
+* Hand-labelled evaluation sets
+* Limited production traffic
+* No human preference studies
+* Limited real-world deployment data
+
+Future evaluation will focus on larger frozen benchmark sets, production trace analysis and agentic workflow testing.
 
 ---
 
@@ -255,27 +349,35 @@ These capabilities remain experimental and are not currently exposed through the
 
 ## Intended use
 
-The controller is model agnostic and can be integrated ahead of:
+The Observability Controller operates before the model or workflow and does not depend on a specific LLM provider, framework or agent architecture.
 
-- OpenAI workflows
-- Claude workflows
-- LangGraph pipelines
-- CrewAI systems
-- AutoGen agents
-- Internal support assistants
-- Operational triage systems
-- Customer support workflows
-- Custom RAG systems
-- Internal AI copilots
+It can be integrated ahead of:
+
+* OpenAI workflows
+* Claude workflows
+* Gemini workflows
+* LangGraph pipelines
+* CrewAI systems
+* AutoGen agents
+* Custom RAG systems
+* Internal AI copilots
+* Proprietary agent frameworks
+
+The controller is particularly suited to environments where users frequently submit incomplete requests and downstream reasoning, retrieval or execution can be expensive.
 
 Typical use cases include:
 
-- Incident triage
-- Support ticket routing
-- AI agent workflows
-- Retrieval augmented generation (RAG)
-- Internal engineering assistants
-- Operational diagnostics
+* Customer support systems
+* Support ticket routing
+* IT and engineering helpdesks
+* Incident triage
+* Operational diagnostics
+* Internal AI assistants
+* Agent workflows
+* Retrieval augmented generation (RAG)
+* Knowledge management systems
+* Internal engineering assistants
+* Workflow orchestration pipelines
 
 ---
 
