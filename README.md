@@ -11,6 +11,8 @@ A lightweight control layer that evaluates whether a request contains sufficient
 
 When critical information is missing, the controller can request clarification before downstream systems consume compute, retrieve documents, call tools or generate responses.
 
+The controller is particularly suited to support, operational and workflow-driven AI systems where incomplete requests can trigger unnecessary reasoning, retrieval or execution.
+
 The controller operates before the model or workflow and does not depend on a specific LLM provider, framework or agent architecture.
 
 Current beta evaluation:
@@ -211,6 +213,27 @@ POST /observe
 Content-Type: application/json
 x-api-key: YOUR_API_KEY
 ```
+
+---
+
+## Data handling
+
+The controller is stateless by design.
+
+It evaluates the request supplied to `/observe` and returns a routing decision such as `proceed` or `clarify`.
+
+The controller does not require:
+
+- A database
+- Conversation memory
+- Stored prompt history
+- Training on user data
+
+The current beta API does not intentionally retain user prompts between requests. No request-body logging is implemented in the application code.
+
+Operators should still review deployment logs, reverse-proxy logs and hosting-provider settings to ensure request bodies are not captured unintentionally.
+
+Do not send sensitive personal, medical, financial or regulated data during beta testing unless a separate data processing agreement is in place.
 
 ---
 
